@@ -1,0 +1,42 @@
+# Generic
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Environment
+.env
+.venv
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Exports
+backend/exports/
+
+# Docker
+*.dockerignore
+
+# OS
+.DS_Store
+Thumbs.db
