@@ -110,16 +110,14 @@ async def youtube_for_query(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Returns a YouTube search-playlist embed URL for the stored query's location.
-
-    No YouTube API key is required.  The URL uses YouTube's official public embed
-    format ``?listType=search&list=<query>`` which works without any credentials.
+    Returns a YouTube search URL for travel videos about the stored query's location.
+    No API key required.
     """
     location = await _get_location_for_query(query_id, db)
-    embed_data = youtube_service.build_embed_url(location.resolved_name)
+    data = youtube_service.build_search_url(location.resolved_name)
     return YouTubeResponse(
         location=location.resolved_name,
-        youtube=YouTubeEmbedData(**embed_data),
+        youtube=YouTubeEmbedData(**data),
     )
 
 
@@ -132,14 +130,12 @@ async def youtube_for_location(
     location: str = Query(..., min_length=1, description="Any location string"),
 ):
     """
-    Geocodes any location string and returns a YouTube search embed URL.
-
-    No YouTube API key is required.  The URL uses YouTube's official public
-    embed format and can be placed directly in an ``<iframe>`` tag.
+    Geocodes any location string and returns a YouTube search URL for travel videos.
+    No API key required.
     """
     loc = await _geocode_raw(location)
-    embed_data = youtube_service.build_embed_url(loc.resolved_name)
+    data = youtube_service.build_search_url(loc.resolved_name)
     return YouTubeResponse(
         location=loc.resolved_name,
-        youtube=YouTubeEmbedData(**embed_data),
+        youtube=YouTubeEmbedData(**data),
     )

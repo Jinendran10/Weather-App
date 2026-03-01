@@ -1,114 +1,162 @@
-import React, { useState } from 'react'
-import { Youtube, ExternalLink, Search } from 'lucide-react'
+import React, { useEffect } from 'react'
+import { Youtube, ExternalLink, MapPin } from 'lucide-react'
 
 /**
- * YouTubePanel – embeds a YouTube search playlist for a location.
+ * YouTubePanel — "Watch Travel Videos" button component.
  *
- * Backend response shape (new embed-based format):
- *   { location: string, youtube: { embed_url: string, query: string } }
+ * Design contract:
+ *   - NO iframe, NO embed, NO API key required.
+ *   - Opens https://www.youtube.com/results?search_query=<query> in a new tab.
+ *   - Container is ALWAYS rendered after first search (independent of weather/map).
+ *   - Button is disabled only when location is empty/null.
+ *   - Shows a friendly message when no location is available.
  *
- * Defensive rules applied:
- *   - Never accesses .length or nested props without guarding
- *   - Uses optional chaining (?.) throughout
- *   - Handles: null data, missing youtube field, missing embed_url,
- *     backend error objects ({ detail: "..." }), loading state
+ * Props:
+ *   data     — { location: string, youtube: { search_url: string, query: string } }
+ *   loading  — videoLoading flag (independent of weatherLoading / mapLoading)
  */
 export default function YouTubePanel({ data, loading = false }) {
-  const [iframeError, setIframeError] = useState(false)
+  // ── Lifecycle / debug logging ─────────────────────────────────────────────
+  useEffect(() => {
+    console.debug('[YouTubePanel] mounted')
+    return () => console.debug('[YouTubePanel] unmounted')
+  }, [])
 
-  // ── Loading skeleton ───────────────────────────────────────────────────────
+  useEffect(() => {
+    const url = data?.youtube?.search_url ?? null
+    console.debug('[YouTubePanel] data changed →', {
+      location:  data?.location ?? null,
+      searchUrl: url,
+      query:     data?.youtube?.query ?? null,
+    })
+  }, [data])
+
+  // ── Derived values ────────────────────────────────────────────────────────
+  const rawLocation = typeof data?.location === 'string' ? data.location.trim() : ''
+  const searchUrl   = data?.youtube?.search_url ?? null
+  const query       = data?.youtube?.query       ?? null
+
+  // Validate: must have a non-empty location and a well-formed search URL
+  const isValid = Boolean(rawLocation && searchUrl && searchUrl.startsWith('https://'))
+
+  // ── Loading skeleton ──────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="card overflow-hidden animate-pulse">
-        <div className="bg-slate-200 w-full aspect-video" />
-        <div className="p-4 space-y-2">
-          <div className="h-4 bg-slate-200 rounded w-1/2" />
-          <div className="h-3 bg-slate-200 rounded w-1/3" />
+      <div
+        className="card p-6 animate-pulse"
+        style={{ backgroundColor: 'var(--card, #FFFFFF)' }}
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 rounded-full bg-slate-200" />
+          <div className="h-4 bg-slate-200 rounded w-40" />
+        </div>
+        <div className="h-12 bg-slate-200 rounded-xl w-full" />
+      </div>
+    )
+  }
+
+  // ── Stable container — ALWAYS rendered, never hidden by other sections ────
+  return (
+    <div
+      className="card p-6 space-y-4"
+      style={{ backgroundColor: 'var(--card, #FFFFFF)' }}
+    >
+      {/* Header row */}
+      <div className="flex items-center gap-3">
+        <div
+          className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center"
+          style={{ backgroundColor: '#EF44441A' }}
+        >
+          <Youtube className="w-5 h-5" style={{ color: '#EF4444' }} />
+        </div>
+        <div>
+          <h3
+            className="font-semibold text-sm leading-tight"
+            style={{ color: 'var(--text-main, #0F172A)' }}
+          >
+            Explore on YouTube
+          </h3>
+          {query && (
+            <p
+              className="text-xs mt-0.5 truncate max-w-xs"
+              style={{ color: 'var(--text-secondary, #475569)' }}
+            >
+              {query}
+            </p>
+          )}
         </div>
       </div>
-    )
-  }
 
-  // ── Guard: no data at all, or API returned an error object ─────────────────
-  // Backend error responses look like { detail: "..." } or { error: "..." }
-  // In both cases data.youtube will be undefined — handle gracefully.
-  const embedUrl = data?.youtube?.embed_url
-  const searchQuery = data?.youtube?.query
-  const locationLabel = typeof data?.location === 'string' ? data.location : null
+      {/* Location pill */}
+      {rawLocation && (
+        <div className="flex items-center gap-1.5">
+          <MapPin
+            className="w-3.5 h-3.5 flex-shrink-0"
+            style={{ color: 'var(--text-secondary, #475569)' }}
+          />
+          <span
+            className="text-xs truncate"
+            style={{ color: 'var(--text-secondary, #475569)' }}
+          >
+            {rawLocation}
+          </span>
+        </div>
+      )}
 
-  if (!data || !embedUrl) {
-    return (
-      <div className="card p-8 text-center text-slate-400">
-        <Youtube className="w-8 h-8 mx-auto mb-2 opacity-40" />
-        <p className="text-sm">
-          {data?.detail || data?.error
-            ? `YouTube unavailable: ${data.detail || data.error}`
-            : 'No YouTube content available for this location.'}
-        </p>
-      </div>
-    )
-  }
-
-  // ── Embed URL for the external "open on YouTube" link ─────────────────────
-  // Convert embed URL → watch/search URL for the external link
-  const externalUrl = searchQuery
-    ? `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQuery)}`
-    : 'https://www.youtube.com'
-
-  return (
-    <div className="card overflow-hidden space-y-0">
-      {/* Label row */}
-      <div className="px-4 pt-4 pb-2 flex items-center justify-between gap-2 flex-wrap">
-        {locationLabel && (
-          <p className="text-xs text-slate-500 uppercase tracking-widest flex items-center gap-1">
-            <Search className="w-3 h-3" />
-            {searchQuery || locationLabel}
-          </p>
-        )}
+      {/* Primary button — opens YouTube search in a new tab */}
+      {isValid ? (
         <a
-          href={externalUrl}
+          href={searchUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1 text-xs text-primary hover:text-blue-700 transition-colors ml-auto"
+          className="
+            group flex items-center justify-center gap-2
+            w-full px-5 py-3 rounded-xl
+            font-semibold text-sm text-white
+            transition-all duration-200 ease-in-out
+            focus:outline-none focus:ring-2 focus:ring-offset-2
+          "
+          style={{
+            backgroundColor: 'var(--primary, #2563EB)',
+            '--tw-ring-color': 'var(--primary, #2563EB)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--secondary, #38BDF8)'
+            e.currentTarget.style.color = 'var(--text-main, #0F172A)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--primary, #2563EB)'
+            e.currentTarget.style.color = '#FFFFFF'
+          }}
+          aria-label={`Watch travel videos for ${rawLocation} on YouTube`}
         >
-          <ExternalLink className="w-3 h-3" />
-          Open on YouTube
+          <Youtube className="w-4 h-4 flex-shrink-0" />
+          Watch Travel Videos
+          <ExternalLink className="w-3.5 h-3.5 flex-shrink-0 opacity-70" />
         </a>
-      </div>
-
-      {/* Iframe embed */}
-      {iframeError ? (
-        <div className="flex flex-col items-center justify-center gap-3 py-12 px-4 bg-slate-50 text-slate-500">
-          <Youtube className="w-10 h-10 opacity-30" />
-          <p className="text-sm text-center">
-            Embed blocked by browser settings.{' '}
-            <a
-              href={externalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              Watch on YouTube instead
-            </a>
-          </p>
-        </div>
       ) : (
-        <div className="relative w-full" style={{ paddingBottom: '56.25%' /* 16:9 */ }}>
-          <iframe
-            className="absolute inset-0 w-full h-full"
-            src={embedUrl}
-            title={`YouTube: ${searchQuery || locationLabel || 'Location videos'}`}
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            loading="lazy"
-            onError={() => setIframeError(true)}
-            onLoad={(e) => {
-              // Log the final embed URL in debug mode
-              console.debug('[YouTubePanel] iframe loaded:', e.target.src)
-            }}
-          />
+        /* Fallback when location is invalid / null — never blank, never crashes */
+        <div
+          className="w-full px-5 py-3 rounded-xl text-sm text-center select-none"
+          style={{
+            backgroundColor: 'var(--bg, #F1F5F9)',
+            color: 'var(--text-secondary, #475569)',
+          }}
+        >
+          {data?.detail || data?.error
+            ? `YouTube unavailable: ${data.detail || data.error}`
+            : 'Enter a location to find travel videos.'}
         </div>
+      )}
+
+      {/* Subtle hint text */}
+      {isValid && (
+        <p
+          className="text-xs text-center"
+          style={{ color: 'var(--text-secondary, #475569)' }}
+        >
+          Opens YouTube search results in a new tab
+        </p>
       )}
     </div>
   )

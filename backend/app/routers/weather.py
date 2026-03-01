@@ -292,8 +292,8 @@ async def simple_weather_lookup(
             "Cache HIT for '%s' (%.4f, %.4f) – skipping API call",
             payload.location, location.latitude, location.longitude,
         )
-        embed = youtube_service.build_embed_url(location.resolved_name)
-        logger.debug("[debug=%s] YouTube embed URL: %s", debug, embed.get("embed_url"))
+        yt_data = YouTubeEmbedData(**youtube_service.build_search_url(location.resolved_name))
+        logger.debug("[debug=%s] YouTube search URL: %s", debug, yt_data.search_url)
         return SimpleWeatherResponse(
             location=location.resolved_name,
             latitude=location.latitude,
@@ -307,7 +307,7 @@ async def simple_weather_lookup(
             weather_main=cached.weather_main,
             weather_icon=cached.weather_icon,
             recorded_at=cached.recorded_at.isoformat() if cached.recorded_at else None,
-            youtube=YouTubeEmbedData(**embed),
+            youtube=yt_data,
             debug_raw_json=json.loads(cached.raw_json) if debug and cached.raw_json else None,
         )
 
@@ -351,8 +351,8 @@ async def simple_weather_lookup(
     db.add(cache_entry)
     await db.flush()
 
-    embed = youtube_service.build_embed_url(location.resolved_name)
-    logger.debug("[debug=%s] YouTube embed URL: %s", debug, embed.get("embed_url"))
+    yt_data = YouTubeEmbedData(**youtube_service.build_search_url(location.resolved_name))
+    logger.debug("[debug=%s] YouTube search URL: %s", debug, yt_data.search_url)
     if debug:
         logger.info("[debug] Full Raw JSON for '%s': %s", payload.location, json.dumps(raw))
     return SimpleWeatherResponse(
@@ -368,7 +368,7 @@ async def simple_weather_lookup(
         weather_main=parsed["weather_main"],
         weather_icon=parsed["weather_icon"],
         recorded_at=parsed["recorded_at"].isoformat() if parsed.get("recorded_at") else None,
-        youtube=YouTubeEmbedData(**embed),
+        youtube=yt_data,
         debug_raw_json=raw if debug else None,
     )
 

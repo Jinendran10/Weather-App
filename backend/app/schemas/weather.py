@@ -218,11 +218,11 @@ class CurrentWeatherOut(BaseModel):
 # ────────────────────────────────────────────────
 
 class YouTubeEmbedData(BaseModel):
-    """Embed URL payload built without any API calls."""
-    embed_url: str = Field(
+    """YouTube search URL built without any API calls."""
+    search_url: str = Field(
         ...,
-        description="YouTube search-playlist embed URL. Drop into an <iframe src=...>.",
-        examples=["https://www.youtube.com/embed?listType=search&list=Kochi+Kerala+India+travel+guide"],
+        description="YouTube search results URL. Open in a new tab to show travel videos.",
+        examples=["https://www.youtube.com/results?search_query=Kochi+Kerala+India+travel+guide"],
     )
     query: str = Field(..., description="Human-readable search query used to build the URL.")
 
