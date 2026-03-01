@@ -4,14 +4,20 @@ import WeatherCard from '../components/WeatherCard'
 import MapView from '../components/MapView'
 import YouTubePanel from '../components/YouTubePanel'
 import { weatherApi, integrationsApi } from '../services/api'
-import { Cloud, Map, Youtube } from 'lucide-react'
+import { Cloud, Map, Youtube, AlertTriangle } from 'lucide-react'
 
 /**
  * Home page – live current weather lookup.
- * Shows current conditions, map, and YouTube videos.
+ *
+ * Defensive rules applied:
+ *   - Every API call result is checked before use
+ *   - Error state shown inline per section (never crashes whole page)
+ *   - Console logs for every API response to aid debugging
+ *   - No property access without existence check
  */
 export default function Home() {
   const [weather, setWeather] = useState(null)
+  const [weatherError, setWeatherError] = useState(null)
   const [mapData, setMapData] = useState(null)
   const [ytData, setYtData] = useState(null)
   const [loadingWeather, setLoadingWeather] = useState(false)
@@ -19,11 +25,12 @@ export default function Home() {
   const [loadingYt, setLoadingYt] = useState(false)
 
   const handleSearch = async (location) => {
+    // Reset all state on every new search
     setWeather(null)
+    setWeatherError(null)
     setMapData(null)
     setYtData(null)
 
-    // Fetch weather + map + youtube in parallel
     setLoadingWeather(true)
     setLoadingMap(true)
     setLoadingYt(true)
@@ -34,13 +41,48 @@ export default function Home() {
       integrationsApi.getYoutubeForLocation(location),
     ])
 
+    // ── Weather ──────────────────────────────────────────────────────────────
     setLoadingWeather(false)
-    setLoadingMap(false)
-    setLoadingYt(false)
+    if (wRes.status === 'fulfilled') {
+      const data = wRes.value
+      console.log('[Home] Weather API response:', data)
+      // Guard: backend may return an error object instead of valid weather
+      if (data && typeof data.temp_celsius === 'number') {
+        setWeather(data)
+      } else if (data?.detail || data?.error) {
+        const msg = data.detail || data.error
+        console.warn('[Home] Weather API returned error payload:', msg)
+        setWeatherError(msg)
+      } else {
+        setWeather(data)
+      }
+    } else {
+      const errMsg =
+        wRes.reason?.response?.data?.detail ||
+        wRes.reason?.response?.data?.error ||
+        wRes.reason?.message ||
+        'Failed to fetch weather data.'
+      console.error('[Home] Weather API error:', errMsg, wRes.reason)
+      setWeatherError(errMsg)
+    }
 
-    if (wRes.status === 'fulfilled') setWeather(wRes.value)
-    if (mRes.status === 'fulfilled') setMapData(mRes.value)
-    if (yRes.status === 'fulfilled') setYtData(yRes.value)
+    // ── Map ───────────────────────────────────────────────────────────────────
+    setLoadingMap(false)
+    if (mRes.status === 'fulfilled') {
+      console.log('[Home] Maps API response:', mRes.value)
+      setMapData(mRes.value ?? null)
+    } else {
+      console.warn('[Home] Maps API failed (map hidden):', mRes.reason?.message)
+    }
+
+    // ── YouTube ───────────────────────────────────────────────────────────────
+    setLoadingYt(false)
+    if (yRes.status === 'fulfilled') {
+      console.log('[Home] YouTube API response:', yRes.value)
+      setYtData(yRes.value ?? null)
+    } else {
+      console.warn('[Home] YouTube API failed (panel hidden):', yRes.reason?.message)
+    }
   }
 
   return (
@@ -60,13 +102,21 @@ export default function Home() {
       <SearchBar onSearch={handleSearch} loading={loadingWeather} />
 
       {/* Current weather */}
-      {(loadingWeather || weather) && (
+      {(loadingWeather || weather || weatherError) && (
         <section className="space-y-2">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-400 uppercase tracking-widest">
             <Cloud className="w-4 h-4" /> Current Conditions
           </h2>
           {loadingWeather ? (
             <div className="card p-8 text-center text-slate-500 animate-pulse">Fetching weather…</div>
+          ) : weatherError ? (
+            <div className="card p-6 flex items-start gap-3 border-red-500/20 bg-red-500/5">
+              <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-red-300 font-semibold text-sm">Could not load weather</p>
+                <p className="text-slate-400 text-sm mt-0.5">{weatherError}</p>
+              </div>
+            </div>
           ) : (
             <WeatherCard data={weather} title="Current Weather" />
           )}
@@ -81,7 +131,7 @@ export default function Home() {
           </h2>
           {loadingMap ? (
             <div className="card h-64 animate-pulse bg-slate-800" />
-          ) : mapData ? (
+          ) : (mapData?.latitude && mapData?.longitude) ? (
             <MapView
               latitude={mapData.latitude}
               longitude={mapData.longitude}
@@ -104,3 +154,4 @@ export default function Home() {
     </div>
   )
 }
+

@@ -14,19 +14,42 @@ const api = axios.create({
   timeout: 30000,
 })
 
-// Global error interceptor
+// ── Request interceptor: log every outgoing call ──────────────────────────────
+api.interceptors.request.use((config) => {
+  console.debug(`[API] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`,
+    config.params || config.data || '')
+  return config
+})
+
+// ── Response interceptor: log + surface errors ────────────────────────────────
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    console.debug(`[API] ← ${res.status} ${res.config.url}`, res.data)
+    return res
+  },
   (err) => {
+    const status = err.response?.status
+    const responseData = err.response?.data
+
+    // Log full error data so developers can see exactly what came back
+    console.error('[API] Error', {
+      url: err.config?.url,
+      status,
+      data: responseData,
+      message: err.message,
+    })
+
     const msg =
-      err.response?.data?.detail ||
-      err.response?.data?.error ||
+      responseData?.detail ||
+      responseData?.error ||
       err.message ||
       'An unexpected error occurred.'
-    // Don't toast on 404 (handled per-component)
-    if (err.response?.status !== 404) {
+
+    // Don't toast on 404 (handled per-component) or 401 (shown inline)
+    if (status !== 404 && status !== 401) {
       toast.error(msg)
     }
+
     return Promise.reject(err)
   }
 )

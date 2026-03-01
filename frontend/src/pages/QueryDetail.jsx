@@ -64,23 +64,34 @@ export default function QueryDetail() {
   const [mapData, setMapData] = useState(null)
   const [ytData, setYtData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [activeTab, setActiveTab] = useState('chart')
 
   const load = async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       const q = await weatherApi.getQuery(id)
+      console.log('[QueryDetail] Query data:', q)
       setQuery(q)
       const [mRes, yRes] = await Promise.allSettled([
         integrationsApi.getMapsForQuery(id),
         integrationsApi.getYoutubeForQuery(id),
       ])
       if (mRes.status === 'fulfilled') setMapData(mRes.value)
-      if (yRes.status === 'fulfilled') setYtData(yRes.value)
+      if (yRes.status === 'fulfilled') {
+        console.log('[QueryDetail] YouTube data:', yRes.value)
+        setYtData(yRes.value)
+      }
     } catch (err) {
-      if (err.response?.status === 404) {
+      const status = err.response?.status
+      if (status === 404) {
         toast.error('Query not found.')
         navigate('/history')
+      } else {
+        const msg = err.response?.data?.detail || err.message || 'Failed to load query.'
+        console.error('[QueryDetail] Load error:', msg)
+        setLoadError(msg)
       }
     } finally {
       setLoading(false)
@@ -115,11 +126,25 @@ export default function QueryDetail() {
     )
   }
 
+  if (loadError) {
+    return (
+      <div className="card p-8 flex flex-col items-center gap-4 text-center">
+        <AlertTriangle className="w-10 h-10 text-red-400 opacity-70" />
+        <p className="text-red-300 font-semibold">Failed to load query</p>
+        <p className="text-slate-400 text-sm">{loadError}</p>
+        <button className="btn-secondary" onClick={() => navigate('/history')}>Back to History</button>
+      </div>
+    )
+  }
+
   if (!query) return null
 
-  const sortedRecords = [...(query.weather_records || [])].sort(
-    (a, b) => new Date(a.record_date) - new Date(b.record_date)
-  )
+  // Guard: weather_records may be null/undefined if query is malformed
+  const sortedRecords = Array.isArray(query.weather_records)
+    ? [...query.weather_records].sort(
+        (a, b) => new Date(a.record_date) - new Date(b.record_date)
+      )
+    : []
 
   const chartData = sortedRecords.map((r) => ({
     date: r.record_date,
@@ -150,11 +175,11 @@ export default function QueryDetail() {
             <ArrowLeft className="w-4 h-4" /> Back to History
           </button>
           <h1 className="text-2xl font-bold text-white">
-            {query.label || query.location.resolved_name}
+            {query.label || query.location?.resolved_name || 'Query Detail'}
           </h1>
           <div className="flex items-center gap-4 mt-1.5 text-sm text-slate-400 flex-wrap">
             <span className="flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5" /> {query.location.resolved_name}
+              <MapPin className="w-3.5 h-3.5" /> {query.location?.resolved_name ?? 'Unknown location'}
             </span>
             <span className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5" />
@@ -181,15 +206,30 @@ export default function QueryDetail() {
           {[
             {
               label: 'Avg Temp',
-              value: (sortedRecords.reduce((s, r) => s + (r.temp_avg ?? 0), 0) / sortedRecords.length).toFixed(1) + '°C',
+              value: sortedRecords.length > 0
+                ? (() => {
+                    const avg = sortedRecords.reduce((s, r) => s + (r.temp_avg ?? 0), 0) / sortedRecords.length
+                    return isFinite(avg) ? avg.toFixed(1) + '°C' : '—'
+                  })()
+                : '—',
             },
             {
               label: 'Max Temp',
-              value: Math.max(...sortedRecords.map((r) => r.temp_max ?? -999)).toFixed(1) + '°C',
+              value: sortedRecords.length > 0
+                ? (() => {
+                    const vals = sortedRecords.map((r) => r.temp_max).filter((v) => v != null)
+                    return vals.length > 0 ? Math.max(...vals).toFixed(1) + '°C' : '—'
+                  })()
+                : '—',
             },
             {
               label: 'Min Temp',
-              value: Math.min(...sortedRecords.map((r) => r.temp_min ?? 999)).toFixed(1) + '°C',
+              value: sortedRecords.length > 0
+                ? (() => {
+                    const vals = sortedRecords.map((r) => r.temp_min).filter((v) => v != null)
+                    return vals.length > 0 ? Math.min(...vals).toFixed(1) + '°C' : '—'
+                  })()
+                : '—',
             },
             {
               label: 'Records',
@@ -325,12 +365,16 @@ export default function QueryDetail() {
 
       {/* Tab: Map */}
       {activeTab === 'map' && (
-        <MapView
-          latitude={query.location.latitude}
-          longitude={query.location.longitude}
-          locationName={query.location.resolved_name}
-          height="420px"
-        />
+        (query.location?.latitude && query.location?.longitude) ? (
+          <MapView
+            latitude={query.location.latitude}
+            longitude={query.location.longitude}
+            locationName={query.location?.resolved_name}
+            height="420px"
+          />
+        ) : (
+          <div className="card p-8 text-center text-slate-500">Location coordinates unavailable.</div>
+        )
       )}
 
       {/* Tab: YouTube */}
