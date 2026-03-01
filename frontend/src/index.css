@@ -2,51 +2,90 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Brand palette ──────────────────────────────────────────────────────── */
+:root {
+  --primary:        #2563EB;
+  --secondary:      #38BDF8;
+  --bg:             #F1F5F9;
+  --card:           #FFFFFF;
+  --text-main:      #0F172A;
+  --text-secondary: #475569;
+  --temp-accent:    #F97316;
+  --border:         #E2E8F0;
+  --shadow:         0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+}
+
+/* ── Base layer ─────────────────────────────────────────────────────────── */
 @layer base {
   html {
     @apply scroll-smooth;
   }
   body {
-    @apply bg-slate-950 text-slate-100 font-sans antialiased;
+    background-color: var(--bg);
+    color: var(--text-main);
+    @apply font-sans antialiased;
   }
 }
 
+/* ── Component layer ────────────────────────────────────────────────────── */
 @layer components {
+  /* White card with subtle border + shadow */
   .card {
-    @apply bg-slate-900 border border-slate-700/50 rounded-2xl;
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    box-shadow: var(--shadow);
   }
+
+  /* Primary – brand blue */
   .btn-primary {
-    @apply bg-sky-500 hover:bg-sky-400 text-white font-semibold px-5 py-2.5 rounded-xl
-           transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    background-color: var(--primary);
+    @apply text-white font-semibold px-5 py-2.5 rounded-xl
+           transition-colors duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed;
   }
+  .btn-primary:hover:not(:disabled) {
+    background-color: #1D4ED8;  /* blue-700 */
+  }
+
+  /* Secondary – light gray */
   .btn-secondary {
-    @apply bg-slate-700 hover:bg-slate-600 text-white font-semibold px-5 py-2.5 rounded-xl
-           transition-colors duration-200;
+    @apply bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold
+           px-5 py-2.5 rounded-xl transition-colors duration-200;
   }
+
+  /* Danger – red outline */
   .btn-danger {
-    @apply bg-red-600/20 hover:bg-red-600/40 text-red-400 font-semibold px-4 py-2 rounded-lg
-           border border-red-600/30 transition-colors duration-200;
+    @apply bg-red-50 hover:bg-red-100 text-red-600 font-semibold px-4 py-2
+           rounded-lg border border-red-200 transition-colors duration-200;
   }
+
+  /* Text input */
   .input {
-    @apply w-full bg-slate-800 border border-slate-600 text-slate-100 rounded-xl px-4 py-2.5
-           placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500
+    @apply w-full bg-white border border-slate-300 text-slate-900 rounded-xl
+           px-4 py-2.5 placeholder-slate-400
+           focus:outline-none focus:ring-2 focus:ring-primary
            focus:border-transparent transition;
   }
+
+  /* Form label */
   .label {
-    @apply block text-sm font-medium text-slate-400 mb-1.5;
+    @apply block text-sm font-medium text-slate-600 mb-1.5;
   }
+
+  /* Stat card (used in QueryDetail summary row) */
   .stat-card {
     @apply card p-5 flex flex-col gap-1;
   }
 }
 
-/* Leaflet map container */
+/* ── Leaflet map ────────────────────────────────────────────────────────── */
 .leaflet-container {
   border-radius: 1rem;
   z-index: 0;
 }
 
-/* Recharts tooltip */
+/* ── Recharts tooltip ───────────────────────────────────────────────────── */
 .recharts-tooltip-wrapper {
   @apply !z-50;
 }

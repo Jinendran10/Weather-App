@@ -56,11 +56,11 @@ export default function History() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Database className="w-6 h-6 text-sky-400" />
+          <h1 className="text-2xl font-bold text-text-main flex items-center gap-2">
+            <Database className="w-6 h-6 text-primary" />
             Weather History
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-text-sec text-sm mt-1">
             Create, browse, update and delete weather queries with date ranges.
           </p>
         </div>
@@ -79,7 +79,7 @@ export default function History() {
       {/* Create form */}
       {showForm && (
         <div className="card p-6">
-          <h2 className="font-semibold text-white mb-4">New Weather Query</h2>
+          <h2 className="font-semibold text-text-main mb-4">New Weather Query</h2>
           <DateRangeForm onSubmit={handleCreate} loading={submitting} />
         </div>
       )}
@@ -97,7 +97,7 @@ export default function History() {
       {loading ? (
         <div className="space-y-3">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="card h-20 animate-pulse" />
+            <div key={i} className="card h-20 animate-pulse bg-slate-100" />
           ))}
         </div>
       ) : (

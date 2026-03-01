@@ -277,11 +277,21 @@ class SimpleWeatherResponse(BaseModel):
     latitude: float
     longitude: float
     temperature: float = Field(..., description="Current temperature in Celsius")
+    feels_like: Optional[float] = Field(None, description="Feels-like temperature in Celsius")
     humidity: int = Field(..., description="Humidity percentage (0-100)")
+    pressure: Optional[float] = Field(None, description="Atmospheric pressure in hPa")
+    wind_speed: Optional[float] = Field(None, description="Wind speed in m/s")
     weather_description: str = Field(..., description="Short weather description")
+    weather_main: Optional[str] = Field(None, description="Weather category (e.g. Rain, Clear)")
+    weather_icon: Optional[str] = Field(None, description="OpenWeatherMap icon code")
+    recorded_at: Optional[str] = Field(None, description="Timestamp of weather observation (ISO 8601)")
     youtube: Optional[YouTubeEmbedData] = Field(
         None,
         description="YouTube search embed URL for travel videos about this location.",
+    )
+    debug_raw_json: Optional[dict] = Field(
+        None,
+        description="Full raw API response (only included when debug=true).",
     )
 
 

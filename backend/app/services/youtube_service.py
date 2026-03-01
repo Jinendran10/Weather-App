@@ -52,44 +52,48 @@ class YouTubeService:
             - ``embed_url``: Ready-to-use ``<iframe src="...">`` URL.
             - ``query``:     Human-readable version of the search query used.
         """
-        raw_query = f"{location_name} {suffix}"
-        url_query = self._sanitize(raw_query)
-        embed_url = f"{EMBED_BASE}?listType=search&list={url_query}"
+        if not location_name or not location_name.strip():
+            location_name = "travel destination"
+
+        raw_query = f"{location_name.strip()} {suffix}"
+        clean_query = self._clean(raw_query)
+        encoded = quote_plus(clean_query)  # proper percent-encoding, spaces → +
+        embed_url = f"{EMBED_BASE}?listType=search&list={encoded}"
 
         logger.debug(
-            "YouTube embed URL generated. Location prefix: %.30s",
-            location_name,
+            "[YouTube] embed URL built | location=%.40s | query=%.80s | url=%.120s",
+            location_name, clean_query, embed_url,
         )
         return {
             "embed_url": embed_url,
-            "query": url_query.replace("+", " "),
+            "query": clean_query,
         }
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _sanitize(self, raw: str) -> str:
+    def _clean(self, raw: str) -> str:
         """
-        Sanitize a raw user-supplied string for safe use in a URL query param.
+        Clean a raw user-supplied string before URL-encoding.
 
         Steps:
-        1. Remove characters with injection potential (``< > " ' ; & | …``).
-        2. Collapse multiple consecutive whitespace characters into one space.
-        3. Replace every space with ``+`` (standard form-encoding for query
-           parameters, consistent with how YouTube's own search URLs look).
-        4. Enforce a maximum length to prevent oversized URLs.
+        1. Strip characters with injection risk.
+        2. Collapse consecutive whitespace.
+        3. Cap at 200 characters.
+
+        The result is a plain string; the caller runs ``quote_plus()`` on it
+        which handles all remaining percent-encoding.
 
         Args:
             raw: Unsanitized string.
 
         Returns:
-            URL-safe, ``+``-delimited query string with a 200-char cap.
+            Cleaned, whitespace-normalised string (200 char max).
         """
-        cleaned = _UNSAFE_RE.sub("", raw)         # strip unsafe chars
-        cleaned = " ".join(cleaned.split())        # normalise whitespace
-        cleaned = cleaned[:200]                    # hard cap – prevents huge URLs
-        return cleaned.replace(" ", "+")
+        cleaned = _UNSAFE_RE.sub("", raw)    # strip injection-risk chars
+        cleaned = " ".join(cleaned.split())  # normalise whitespace
+        return cleaned[:200]                 # hard cap
 
 
 youtube_service = YouTubeService()

@@ -118,7 +118,17 @@ class OpenWeatherService:
                     "Verify the key at openweathermap.org/api_keys."
                 )
             resp.raise_for_status()
-            return resp.json()
+            data = resp.json()
+            logger.debug(
+                "[WeatherAPI] /data/2.5/weather (%.4f, %.4f) HTTP %d | "
+                "temp=%.1f°C humidity=%d%% desc=%s",
+                lat, lon, resp.status_code,
+                data.get("main", {}).get("temp", float("nan")),
+                data.get("main", {}).get("humidity", 0),
+                data.get("weather", [{}])[0].get("description", "n/a"),
+            )
+            logger.debug("[WeatherAPI] Full current weather JSON: %s", resp.text)
+            return data
 
     async def get_forecast(self, lat: float, lon: float) -> Dict[str, Any]:
         """
@@ -175,6 +185,11 @@ class OpenWeatherService:
                 )
             resp.raise_for_status()
             data = resp.json()
+            logger.debug(
+                "[WeatherAPI] /data/2.5/forecast (%.4f, %.4f) HTTP %d | entries=%d",
+                lat, lon, resp.status_code, len(data.get("list", [])),
+            )
+            logger.debug("[WeatherAPI] Full forecast JSON: %s", resp.text)
 
         # Group 3-hourly entries by calendar date
         days: dict = defaultdict(list)

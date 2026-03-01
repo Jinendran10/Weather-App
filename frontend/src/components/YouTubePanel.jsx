@@ -20,10 +20,10 @@ export default function YouTubePanel({ data, loading = false }) {
   if (loading) {
     return (
       <div className="card overflow-hidden animate-pulse">
-        <div className="bg-slate-700 w-full aspect-video" />
+        <div className="bg-slate-200 w-full aspect-video" />
         <div className="p-4 space-y-2">
-          <div className="h-4 bg-slate-700 rounded w-1/2" />
-          <div className="h-3 bg-slate-700 rounded w-1/3" />
+          <div className="h-4 bg-slate-200 rounded w-1/2" />
+          <div className="h-3 bg-slate-200 rounded w-1/3" />
         </div>
       </div>
     )
@@ -38,7 +38,7 @@ export default function YouTubePanel({ data, loading = false }) {
 
   if (!data || !embedUrl) {
     return (
-      <div className="card p-8 text-center text-slate-500">
+      <div className="card p-8 text-center text-slate-400">
         <Youtube className="w-8 h-8 mx-auto mb-2 opacity-40" />
         <p className="text-sm">
           {data?.detail || data?.error
@@ -69,7 +69,7 @@ export default function YouTubePanel({ data, loading = false }) {
           href={externalUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1 text-xs text-sky-400 hover:text-sky-300 transition-colors ml-auto"
+          className="flex items-center gap-1 text-xs text-primary hover:text-blue-700 transition-colors ml-auto"
         >
           <ExternalLink className="w-3 h-3" />
           Open on YouTube
@@ -78,7 +78,7 @@ export default function YouTubePanel({ data, loading = false }) {
 
       {/* Iframe embed */}
       {iframeError ? (
-        <div className="flex flex-col items-center justify-center gap-3 py-12 px-4 text-slate-500">
+        <div className="flex flex-col items-center justify-center gap-3 py-12 px-4 bg-slate-50 text-slate-500">
           <Youtube className="w-10 h-10 opacity-30" />
           <p className="text-sm text-center">
             Embed blocked by browser settings.{' '}
@@ -86,7 +86,7 @@ export default function YouTubePanel({ data, loading = false }) {
               href={externalUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sky-400 hover:underline"
+              className="text-primary hover:underline"
             >
               Watch on YouTube instead
             </a>
@@ -103,6 +103,10 @@ export default function YouTubePanel({ data, loading = false }) {
             allowFullScreen
             loading="lazy"
             onError={() => setIframeError(true)}
+            onLoad={(e) => {
+              // Log the final embed URL in debug mode
+              console.debug('[YouTubePanel] iframe loaded:', e.target.src)
+            }}
           />
         </div>
       )}

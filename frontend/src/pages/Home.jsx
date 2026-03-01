@@ -89,10 +89,10 @@ export default function Home() {
     <div className="space-y-8">
       {/* Hero */}
       <div className="text-center space-y-3 py-8">
-        <h1 className="text-4xl font-bold text-white tracking-tight">
-          <span className="text-sky-400">Weather</span>Vault
+        <h1 className="text-4xl font-bold text-text-main tracking-tight">
+          <span className="text-primary">Weather</span>Vault
         </h1>
-        <p className="text-slate-400 max-w-xl mx-auto">
+        <p className="text-text-sec max-w-xl mx-auto">
           Real-time weather intelligence for any location on earth.
           Enter a city, ZIP code, GPS coordinates, or landmark.
         </p>
@@ -104,17 +104,17 @@ export default function Home() {
       {/* Current weather */}
       {(loadingWeather || weather || weatherError) && (
         <section className="space-y-2">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-400 uppercase tracking-widest">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-500 uppercase tracking-widest">
             <Cloud className="w-4 h-4" /> Current Conditions
           </h2>
           {loadingWeather ? (
-            <div className="card p-8 text-center text-slate-500 animate-pulse">Fetching weather…</div>
+            <div className="card p-8 text-center text-slate-400 animate-pulse">Fetching weather…</div>
           ) : weatherError ? (
-            <div className="card p-6 flex items-start gap-3 border-red-500/20 bg-red-500/5">
-              <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+            <div className="card p-6 flex items-start gap-3 border-red-200 bg-red-50">
+              <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-red-300 font-semibold text-sm">Could not load weather</p>
-                <p className="text-slate-400 text-sm mt-0.5">{weatherError}</p>
+                <p className="text-red-700 font-semibold text-sm">Could not load weather</p>
+                <p className="text-red-600 text-sm mt-0.5">{weatherError}</p>
               </div>
             </div>
           ) : (
@@ -126,11 +126,11 @@ export default function Home() {
       {/* Map */}
       {(loadingMap || mapData) && (
         <section className="space-y-2">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-400 uppercase tracking-widest">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-500 uppercase tracking-widest">
             <Map className="w-4 h-4" /> Location Map
           </h2>
           {loadingMap ? (
-            <div className="card h-64 animate-pulse bg-slate-800" />
+            <div className="card h-64 animate-pulse bg-slate-100" />
           ) : (mapData?.latitude && mapData?.longitude) ? (
             <MapView
               latitude={mapData.latitude}
@@ -145,8 +145,8 @@ export default function Home() {
       {/* YouTube */}
       {(loadingYt || ytData) && (
         <section className="space-y-2">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-400 uppercase tracking-widest">
-            <Youtube className="w-4 h-4 text-red-400" /> Explore on YouTube
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-500 uppercase tracking-widest">
+            <Youtube className="w-4 h-4 text-red-500" /> Explore on YouTube
           </h2>
           <YouTubePanel data={ytData} loading={loadingYt} />
         </section>

@@ -14,11 +14,11 @@ const ICON_MAP = {
 
 function StatPill({ icon: Icon, label, value, unit }) {
   return (
-    <div className="flex items-center gap-2 bg-slate-800/60 rounded-xl px-4 py-2.5">
-      <Icon className="w-4 h-4 text-sky-400 flex-shrink-0" />
+    <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5">
+      <Icon className="w-4 h-4 text-primary flex-shrink-0" />
       <div>
-        <p className="text-xs text-slate-400">{label}</p>
-        <p className="text-sm font-semibold text-white">
+        <p className="text-xs text-slate-500">{label}</p>
+        <p className="text-sm font-semibold text-text-main">
           {value ?? '—'}{unit && <span className="text-slate-400 text-xs ml-0.5">{unit}</span>}
         </p>
       </div>
@@ -50,15 +50,15 @@ export default function WeatherCard({ data, title = 'Current Weather' }) {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-lg font-bold text-white">{title}</h2>
+          <h2 className="text-lg font-bold text-text-main">{title}</h2>
           {data.location && (
-            <p className="text-sm text-slate-400 mt-0.5 flex items-center gap-1">
+            <p className="text-sm text-text-sec mt-0.5 flex items-center gap-1">
               <Navigation className="w-3.5 h-3.5" />
               {data.location.resolved_name}
             </p>
           )}
           {data.record_date && (
-            <p className="text-xs text-slate-500 mt-0.5">{data.record_date}</p>
+            <p className="text-xs text-slate-400 mt-0.5">{data.record_date}</p>
           )}
         </div>
         <span className="text-5xl">{emoji}</span>
@@ -66,7 +66,7 @@ export default function WeatherCard({ data, title = 'Current Weather' }) {
 
       {/* Temperature */}
       <div className="flex items-end gap-4">
-        <span className="text-6xl font-bold text-white">
+        <span className="text-6xl font-bold" style={{ color: 'var(--temp-accent)' }}>
           {tempC != null ? `${tempC.toFixed(1)}°C` : '—'}
         </span>
         <span className="text-2xl text-slate-400 mb-2">
@@ -76,10 +76,17 @@ export default function WeatherCard({ data, title = 'Current Weather' }) {
 
       {/* Description */}
       {data.weather_description && (
-        <p className="text-slate-300 capitalize font-medium">{data.weather_description}</p>
+        <p className="text-slate-700 capitalize font-medium">{data.weather_description}</p>
       )}
       {data.weather_main && data.weather_description && (
-        <p className="text-xs text-slate-500 uppercase tracking-widest">{data.weather_main}</p>
+        <p className="text-xs text-slate-400 uppercase tracking-widest">{data.weather_main}</p>
+      )}
+
+      {/* Timestamp */}
+      {(data.recorded_at || data.timestamp) && (
+        <p className="text-xs text-slate-400">
+          Observed: {new Date(data.recorded_at || data.timestamp).toLocaleString()}
+        </p>
       )}
 
       {/* Stats grid */}
@@ -103,12 +110,12 @@ export default function WeatherCard({ data, title = 'Current Weather' }) {
 
       {/* Sunrise / Sunset */}
       {(data.sunrise || data.sunset) && (
-        <div className="flex gap-4 pt-2 border-t border-slate-700/50">
-          <div className="flex items-center gap-2 text-sm text-slate-300">
+        <div className="flex gap-4 pt-2 border-t border-slate-100">
+          <div className="flex items-center gap-2 text-sm text-slate-600">
             <Sunrise className="w-4 h-4 text-amber-400" />
             {fmt(data.sunrise)}
           </div>
-          <div className="flex items-center gap-2 text-sm text-slate-300">
+          <div className="flex items-center gap-2 text-sm text-slate-600">
             <Sunset className="w-4 h-4 text-orange-400" />
             {fmt(data.sunset)}
           </div>

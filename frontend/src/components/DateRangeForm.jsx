@@ -128,7 +128,7 @@ export default function DateRangeForm({ onSubmit, loading = false, initialLocati
 
       {/* Error */}
       {error && (
-        <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2">
+        <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-4 py-2">
           {error}
         </p>
       )}

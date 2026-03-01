@@ -244,6 +244,7 @@ async def _fetch_weather_for_range(
 )
 async def simple_weather_lookup(
     payload: SimpleWeatherRequest,
+    debug: bool = Query(False, description="Include full raw API response in the reply"),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -292,14 +293,22 @@ async def simple_weather_lookup(
             payload.location, location.latitude, location.longitude,
         )
         embed = youtube_service.build_embed_url(location.resolved_name)
+        logger.debug("[debug=%s] YouTube embed URL: %s", debug, embed.get("embed_url"))
         return SimpleWeatherResponse(
             location=location.resolved_name,
             latitude=location.latitude,
             longitude=location.longitude,
             temperature=cached.temp_celsius,
+            feels_like=cached.feels_like_celsius,
             humidity=cached.humidity,
+            pressure=cached.pressure,
+            wind_speed=cached.wind_speed,
             weather_description=cached.weather_description or "",
+            weather_main=cached.weather_main,
+            weather_icon=cached.weather_icon,
+            recorded_at=cached.recorded_at.isoformat() if cached.recorded_at else None,
             youtube=YouTubeEmbedData(**embed),
+            debug_raw_json=json.loads(cached.raw_json) if debug and cached.raw_json else None,
         )
 
     # Step 3 – Cache MISS → call OpenWeather
@@ -343,14 +352,24 @@ async def simple_weather_lookup(
     await db.flush()
 
     embed = youtube_service.build_embed_url(location.resolved_name)
+    logger.debug("[debug=%s] YouTube embed URL: %s", debug, embed.get("embed_url"))
+    if debug:
+        logger.info("[debug] Full Raw JSON for '%s': %s", payload.location, json.dumps(raw))
     return SimpleWeatherResponse(
         location=location.resolved_name,
         latitude=location.latitude,
         longitude=location.longitude,
         temperature=parsed["temp_celsius"],
+        feels_like=parsed["feels_like_celsius"],
         humidity=parsed["humidity"],
+        pressure=parsed["pressure"],
+        wind_speed=parsed["wind_speed"],
         weather_description=parsed["weather_description"] or "",
+        weather_main=parsed["weather_main"],
+        weather_icon=parsed["weather_icon"],
+        recorded_at=parsed["recorded_at"].isoformat() if parsed.get("recorded_at") else None,
         youtube=YouTubeEmbedData(**embed),
+        debug_raw_json=raw if debug else None,
     )
 
 
