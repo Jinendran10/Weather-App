@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     GOOGLE_MAPS_API_KEY: str = ""
     YOUTUBE_API_KEY: str = ""
 
+    # Cache
+    WEATHER_CACHE_TTL_MINUTES: int = 10
+
     # CORS
     ALLOWED_ORIGINS: list[str] = [
         "http://localhost:3000",

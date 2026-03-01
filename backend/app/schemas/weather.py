@@ -217,20 +217,20 @@ class CurrentWeatherOut(BaseModel):
 # API Integration response schemas
 # ────────────────────────────────────────────────
 
-class YouTubeVideo(BaseModel):
-    video_id: str
-    title: str
-    description: str
-    thumbnail_url: str
-    channel_title: str
-    published_at: str
-    youtube_url: str
+class YouTubeEmbedData(BaseModel):
+    """Embed URL payload built without any API calls."""
+    embed_url: str = Field(
+        ...,
+        description="YouTube search-playlist embed URL. Drop into an <iframe src=...>.",
+        examples=["https://www.youtube.com/embed?listType=search&list=Kochi+Kerala+India+travel+guide"],
+    )
+    query: str = Field(..., description="Human-readable search query used to build the URL.")
 
 
 class YouTubeResponse(BaseModel):
+    """Response for /integrations/youtube/* endpoints."""
     location: str
-    query_used: str
-    videos: List[YouTubeVideo]
+    youtube: YouTubeEmbedData
 
 
 class MapDataOut(BaseModel):
@@ -254,6 +254,35 @@ class ExportRequest(BaseModel):
     )
     format: str = Field("csv", pattern="^(csv|json)$", description="Export format: 'csv' or 'json'")
     include_records: bool = Field(True, description="Include individual daily weather records")
+
+
+# ────────────────────────────────────────────────
+# Simple weather lookup (POST /weather)
+# ────────────────────────────────────────────────
+
+class SimpleWeatherRequest(BaseModel):
+    """Request body for the simple POST /weather endpoint."""
+    location: str = Field(
+        ...,
+        min_length=1,
+        max_length=500,
+        description="Any location: city name, ZIP code, GPS coordinates, landmark, or address.",
+        examples=["Kochi", "New York", "10001", "48.8566,2.3522"],
+    )
+
+
+class SimpleWeatherResponse(BaseModel):
+    """Clean response for the simple POST /weather endpoint."""
+    location: str = Field(..., description="Resolved human-readable location name")
+    latitude: float
+    longitude: float
+    temperature: float = Field(..., description="Current temperature in Celsius")
+    humidity: int = Field(..., description="Humidity percentage (0-100)")
+    weather_description: str = Field(..., description="Short weather description")
+    youtube: Optional[YouTubeEmbedData] = Field(
+        None,
+        description="YouTube search embed URL for travel videos about this location.",
+    )
 
 
 # ────────────────────────────────────────────────

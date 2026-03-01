@@ -34,6 +34,10 @@ htmlcov/
 # Exports
 backend/exports/
 
+# SQLite dev database
+*.db
+*.sqlite3
+
 # Docker
 *.dockerignore
 

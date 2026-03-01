@@ -14,7 +14,7 @@ from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models.weather import WeatherQuery, Location
-from app.schemas.weather import MapDataOut, YouTubeResponse, LocationCreate
+from app.schemas.weather import MapDataOut, YouTubeResponse, YouTubeEmbedData, LocationCreate
 from app.services.geocoding_service import geocoding_service, GeocodingError
 from app.services.maps_service import maps_service
 from app.services.youtube_service import youtube_service
@@ -103,39 +103,43 @@ async def maps_for_location(
 @router.get(
     "/youtube/query/{query_id}",
     response_model=YouTubeResponse,
-    summary="Get YouTube travel videos for a stored query's location",
+    summary="Get YouTube search embed URL for a stored query's location",
 )
 async def youtube_for_query(
     query_id: UUID,
-    max_results: int = Query(6, ge=1, le=10),
     db: AsyncSession = Depends(get_db),
 ):
-    """Returns relevant YouTube videos for the stored query's location."""
+    """
+    Returns a YouTube search-playlist embed URL for the stored query's location.
+
+    No YouTube API key is required.  The URL uses YouTube's official public embed
+    format ``?listType=search&list=<query>`` which works without any credentials.
+    """
     location = await _get_location_for_query(query_id, db)
-    videos_raw = await youtube_service.search_location_videos(location.resolved_name, max_results)
-    from app.schemas.weather import YouTubeVideo
+    embed_data = youtube_service.build_embed_url(location.resolved_name)
     return YouTubeResponse(
         location=location.resolved_name,
-        query_used=f"{location.resolved_name} travel weather",
-        videos=[YouTubeVideo(**v) for v in videos_raw],
+        youtube=YouTubeEmbedData(**embed_data),
     )
 
 
 @router.get(
     "/youtube/location",
     response_model=YouTubeResponse,
-    summary="Get YouTube travel videos for any location string",
+    summary="Get YouTube search embed URL for any location string",
 )
 async def youtube_for_location(
     location: str = Query(..., min_length=1, description="Any location string"),
-    max_results: int = Query(6, ge=1, le=10),
 ):
-    """Geocodes any location string and returns relevant YouTube videos."""
+    """
+    Geocodes any location string and returns a YouTube search embed URL.
+
+    No YouTube API key is required.  The URL uses YouTube's official public
+    embed format and can be placed directly in an ``<iframe>`` tag.
+    """
     loc = await _geocode_raw(location)
-    videos_raw = await youtube_service.search_location_videos(loc.resolved_name, max_results)
-    from app.schemas.weather import YouTubeVideo
+    embed_data = youtube_service.build_embed_url(loc.resolved_name)
     return YouTubeResponse(
         location=loc.resolved_name,
-        query_used=f"{loc.resolved_name} travel weather",
-        videos=[YouTubeVideo(**v) for v in videos_raw],
+        youtube=YouTubeEmbedData(**embed_data),
     )

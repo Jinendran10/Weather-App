@@ -10,13 +10,13 @@ from datetime import date
 
 MOCK_GEO = {
     "raw_input": "Tokyo",
-    "resolved_name": "Tokyo, JP",
-    "country": "JP",
+    "resolved_name": "Tokyo, Japan",
+    "country": "Japan",
     "state": None,
     "city": "Tokyo",
     "latitude": 35.6762,
     "longitude": 139.6503,
-    "place_id": None,
+    "place_id": "99887766",
 }
 
 MOCK_VIDEOS = [
@@ -47,7 +47,7 @@ async def test_youtube_for_location(mock_videos, mock_geo, client):
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["location"] == "Tokyo, JP"
+    assert data["location"] == "Tokyo, Japan"
     assert len(data["videos"]) == 1
     assert data["videos"][0]["video_id"] == "abc123"
 

@@ -6,9 +6,8 @@ import uuid
 from datetime import datetime, date
 from sqlalchemy import (
     Column, String, Float, Integer, DateTime, Date,
-    Boolean, Text, ForeignKey, Enum as SAEnum
+    Boolean, Text, ForeignKey, Enum as SAEnum, Uuid, Index
 )
-from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -22,11 +21,47 @@ class QueryStatus(str, enum.Enum):
     FAILED = "failed"
 
 
+class CurrentWeatherCache(Base):
+    """
+    Caches current-weather API responses per location.
+    If a cached row is < WEATHER_CACHE_TTL_MINUTES old, we skip the API call.
+    """
+    __tablename__ = "current_weather_cache"
+
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    temp_celsius = Column(Float, nullable=True)
+    temp_fahrenheit = Column(Float, nullable=True)
+    feels_like_celsius = Column(Float, nullable=True)
+    humidity = Column(Integer, nullable=True)
+    pressure = Column(Float, nullable=True)
+    wind_speed = Column(Float, nullable=True)
+    wind_direction = Column(Integer, nullable=True)
+    visibility = Column(Integer, nullable=True)
+    cloud_cover = Column(Integer, nullable=True)
+    weather_main = Column(String(100), nullable=True)
+    weather_description = Column(String(300), nullable=True)
+    weather_icon = Column(String(50), nullable=True)
+    sunrise = Column(DateTime(timezone=True), nullable=True)
+    sunset = Column(DateTime(timezone=True), nullable=True)
+    recorded_at = Column(DateTime(timezone=True), nullable=True)
+    raw_json = Column(Text, nullable=True, comment="Raw API JSON for reference")
+    cached_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        Index("ix_cache_lat_lon", "latitude", "longitude"),
+    )
+
+    def __repr__(self):
+        return f"<CurrentWeatherCache lat={self.latitude} lon={self.longitude} cached_at={self.cached_at}>"
+
+
 class Location(Base):
     """Stores validated and geocoded locations."""
     __tablename__ = "locations"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4, index=True)
     raw_input = Column(String(500), nullable=False, comment="Original user-provided location string")
     resolved_name = Column(String(500), nullable=False, comment="Human-readable resolved location name")
     country = Column(String(100), nullable=True)
@@ -54,8 +89,8 @@ class WeatherQuery(Base):
     """
     __tablename__ = "weather_queries"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    location_id = Column(UUID(as_uuid=True), ForeignKey("locations.id", ondelete="CASCADE"), nullable=False)
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4, index=True)
+    location_id = Column(Uuid, ForeignKey("locations.id", ondelete="CASCADE"), nullable=False)
     date_from = Column(Date, nullable=False, comment="Start of requested date range")
     date_to = Column(Date, nullable=False, comment="End of requested date range")
     label = Column(String(300), nullable=True, comment="Optional user-defined label for this query")
@@ -79,8 +114,8 @@ class WeatherRecord(Base):
     """
     __tablename__ = "weather_records"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    query_id = Column(UUID(as_uuid=True), ForeignKey("weather_queries.id", ondelete="CASCADE"), nullable=False)
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4, index=True)
+    query_id = Column(Uuid, ForeignKey("weather_queries.id", ondelete="CASCADE"), nullable=False)
     record_date = Column(Date, nullable=False, index=True)
 
     # Temperature (Celsius)
