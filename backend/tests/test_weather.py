@@ -238,6 +238,23 @@ def test_gps_coordinate_detection():
     assert is_gps_coordinates("10001") is None
 
 
+def test_gps_hemisphere_letters_set_the_sign():
+    from app.utils.validators import is_gps_coordinates
+    # S and W are negative, whether the letter comes before or after the number
+    assert is_gps_coordinates("S33.8688 W151.2093") == (-33.8688, -151.2093)
+    assert is_gps_coordinates("33.8688S, 151.2093W") == (-33.8688, -151.2093)
+    assert is_gps_coordinates("33.8688° S, 151.2093° W") == (-33.8688, -151.2093)
+    assert is_gps_coordinates("N48.8566 E2.3522") == (48.8566, 2.3522)
+    assert is_gps_coordinates("40.7128N 74.0060W") == (40.7128, -74.006)
+    # Letters decide which value is the latitude
+    assert is_gps_coordinates("E2.3522 N48.8566") == (48.8566, 2.3522)
+    # Contradictory or ambiguous input is not treated as coordinates
+    assert is_gps_coordinates("S-33.8688 151.2093") is None
+    assert is_gps_coordinates("N48.8566 N2.3522") is None
+    assert is_gps_coordinates("N48.8566N 2.3522") is None
+    assert is_gps_coordinates("S95 E10") is None
+
+
 def test_zip_code_detection():
     from app.utils.validators import is_zip_code
     assert is_zip_code("10001") is True
