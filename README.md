@@ -30,7 +30,7 @@ WeatherVault is a **full-stack SaaS-style weather application** demonstrating en
 - **RESTful API** with versioned endpoints (`/api/v1/`)
 - **Full CRUD** with PostgreSQL persistence via async SQLAlchemy
 - **Multi-provider geocoding** — resolves any location input (city names, ZIP codes, GPS coordinates, landmarks)
-- **Third-party API integrations** — OpenWeatherMap, Google Maps Embed, YouTube Data API v3
+- **Third-party integrations** — OpenWeatherMap, OpenStreetMap Nominatim geocoding, Google Maps / OpenStreetMap maps, YouTube search links
 - **Data export** — streaming CSV and JSON downloads
 - **Input validation** — Pydantic v2 schemas with custom validators for date ranges and location sanitization
 - **Structured error handling** — consistent JSON error payloads across all endpoints
@@ -64,7 +64,7 @@ WeatherVault is a **full-stack SaaS-style weather application** demonstrating en
                             |
 +---------------------------v--------------------------------------+
 |   EXTERNAL SERVICES                                              |
-|   [ OpenWeatherMap ]  [ Google Maps ]  [ YouTube Data API v3 ] |
+|   [ OpenWeatherMap ]  [ Google Maps ]  [ YouTube search link ] |
 +------------------------------------------------------------------+
 ```
 
@@ -130,9 +130,9 @@ The system accepts **any** of the following location formats:
 | Integration | Endpoint | Notes |
 |---|---|---|
 | **Google Maps** | `GET /api/v1/integrations/maps/location?location=...` | Embed URL, static map URL, place details |
-| **YouTube** | `GET /api/v1/integrations/youtube/location?location=...` | Top 6 travel/location videos |
+| **YouTube** | `GET /api/v1/integrations/youtube/location?location=...` | YouTube search link for travel videos about the place (no API key) |
 | **Maps (query)** | `GET /api/v1/integrations/maps/query/{id}` | Map for a stored query location |
-| **YouTube (query)** | `GET /api/v1/integrations/youtube/query/{id}` | Videos for a stored query location |
+| **YouTube (query)** | `GET /api/v1/integrations/youtube/query/{id}` | Search link for a stored query's location |
 
 ---
 
@@ -223,8 +223,8 @@ locations (1) --< weather_queries (1) --< weather_records
 | `POST` | `/export` | Export data (CSV or JSON) |
 | `GET` | `/integrations/maps/location` | Google Maps for any location |
 | `GET` | `/integrations/maps/query/{id}` | Google Maps for stored query |
-| `GET` | `/integrations/youtube/location` | YouTube videos for any location |
-| `GET` | `/integrations/youtube/query/{id}` | YouTube videos for stored query |
+| `GET` | `/integrations/youtube/location` | YouTube search link for any location |
+| `GET` | `/integrations/youtube/query/{id}` | YouTube search link for a stored query |
 
 ---
 
@@ -331,7 +331,7 @@ cp .env.example .env
 | `DATABASE_URL` | YES | PostgreSQL async connection string |
 | `OPENWEATHER_API_KEY` | YES | Free at openweathermap.org/api |
 | `GOOGLE_MAPS_API_KEY` | Optional | Maps Embed, Static Maps, Geocoding, Places. Falls back to OpenStreetMap |
-| `YOUTUBE_API_KEY` | Optional | YouTube Data API v3. Falls back to mock data |
+| `YOUTUBE_API_KEY` | Not used | The YouTube integration builds a search link, so no key is needed |
 | `DEBUG` | Optional | Enables SQL logging. Default: false |
 
 ---
@@ -469,7 +469,7 @@ Weather-App/
 │   │   │   ├── geocoding_service.py  # Multi-provider location resolution
 │   │   │   ├── weather_service.py    # OpenWeatherMap API client
 │   │   │   ├── maps_service.py       # Google Maps URL builder
-│   │   │   └── youtube_service.py    # YouTube Data API v3 client
+│   │   │   └── youtube_service.py    # Builds YouTube search links
 │   │   └── utils/validators.py       # GPS/ZIP detection, input sanitizer
 │   ├── tests/
 │   │   ├── conftest.py               # SQLite test DB + ASGI client fixtures
@@ -489,7 +489,7 @@ Weather-App/
 │   │   │   ├── WeatherHistory.jsx    # CRUD list
 │   │   │   ├── DateRangeForm.jsx     # Query creation form
 │   │   │   ├── MapView.jsx           # Leaflet map
-│   │   │   ├── YouTubePanel.jsx      # YouTube video grid
+│   │   │   ├── YouTubePanel.jsx      # "Watch travel videos" link
 │   │   │   └── ExportButtons.jsx     # CSV/JSON download
 │   │   ├── pages/
 │   │   │   ├── Home.jsx              # Live weather
