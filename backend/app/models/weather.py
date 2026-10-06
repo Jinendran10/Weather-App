@@ -76,6 +76,10 @@ class Location(Base):
     # Relationships
     weather_queries = relationship("WeatherQuery", back_populates="location", cascade="all, delete-orphan")
 
+    __table_args__ = (
+        Index("ix_locations_lat_lon", "latitude", "longitude"),
+    )
+
     def __repr__(self):
         return f"<Location id={self.id} name='{self.resolved_name}'>"
 

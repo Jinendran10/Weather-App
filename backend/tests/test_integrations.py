@@ -19,27 +19,14 @@ MOCK_GEO = {
     "place_id": "99887766",
 }
 
-MOCK_VIDEOS = [
-    {
-        "video_id": "abc123",
-        "title": "Tokyo Travel Guide",
-        "description": "Explore Tokyo",
-        "thumbnail_url": "https://img.youtube.com/vi/abc123/hqdefault.jpg",
-        "channel_title": "Travel Channel",
-        "published_at": "2024-01-01T00:00:00Z",
-        "youtube_url": "https://www.youtube.com/watch?v=abc123",
-    }
-]
-
-
 # ─── YouTube integration ──────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 @patch("app.routers.integrations.geocoding_service.resolve_location", new_callable=AsyncMock)
-@patch("app.routers.integrations.youtube_service.search_location_videos", new_callable=AsyncMock)
-async def test_youtube_for_location(mock_videos, mock_geo, client):
+async def test_youtube_for_location(mock_geo, client):
+    # The YouTube integration builds a search URL locally (no API key, no embed),
+    # so only geocoding needs mocking.
     mock_geo.return_value = MOCK_GEO
-    mock_videos.return_value = MOCK_VIDEOS
 
     response = await client.get(
         "/api/v1/integrations/youtube/location",
@@ -48,8 +35,10 @@ async def test_youtube_for_location(mock_videos, mock_geo, client):
     assert response.status_code == 200
     data = response.json()
     assert data["location"] == "Tokyo, Japan"
-    assert len(data["videos"]) == 1
-    assert data["videos"][0]["video_id"] == "abc123"
+    assert data["youtube"]["query"] == "Tokyo, Japan travel guide"
+    assert data["youtube"]["search_url"] == (
+        "https://www.youtube.com/results?search_query=Tokyo%2C+Japan+travel+guide"
+    )
 
 
 # ─── Maps integration ─────────────────────────────────────────────────────────

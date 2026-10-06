@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 
 # ─── Mock data ────────────────────────────────────────────────────────────────
@@ -349,3 +349,72 @@ async def test_simple_weather_rate_limit_handling(mock_current, mock_geo, client
     response = await client.post("/api/v1/weather", json={"location": "New York"})
     assert response.status_code == 429
     assert "rate limit" in response.json()["detail"].lower()
+
+
+# ─── Date-range caching ───────────────────────────────────────────────────────
+
+MOCK_GEO_REYKJAVIK = {
+    "raw_input": "Reykjavik",
+    "resolved_name": "Reykjavik, Iceland",
+    "country": "Iceland",
+    "state": None,
+    "city": "Reykjavik",
+    "latitude": 64.1466,
+    "longitude": -21.9426,
+    "place_id": "55555555",
+}
+
+
+def _forecast_for(days):
+    """A forecast with one daily entry per date, stamped at local noon (date.fromtimestamp reads local time)."""
+    entry = MOCK_FORECAST_RAW["daily"][0]
+    return {"daily": [
+        {**entry, "dt": int(datetime.combine(d, datetime.min.time()).replace(hour=12).timestamp())}
+        for d in days
+    ]}
+
+
+@pytest.mark.asyncio
+@patch("app.routers.weather.geocoding_service.resolve_location", new_callable=AsyncMock)
+@patch("app.routers.weather.weather_service.get_current_weather", new_callable=AsyncMock)
+@patch("app.routers.weather.weather_service.get_forecast", new_callable=AsyncMock)
+async def test_range_fetches_forecast_once_and_reuses_cache(mock_forecast, mock_current, mock_geo, client):
+    days = [date.today() + timedelta(days=i) for i in range(3)]
+    mock_geo.return_value = MOCK_GEO_REYKJAVIK
+    mock_forecast.return_value = _forecast_for(days)
+    mock_current.return_value = MOCK_CURRENT_RAW
+    payload = {"location": "Reykjavik", "date_from": str(days[0]), "date_to": str(days[-1])}
+
+    first = await client.post("/api/v1/weather/queries", json=payload)
+    assert first.status_code == 201, first.text
+    assert len(first.json()["weather_records"]) == 3
+    assert mock_forecast.await_count == 1  # one forecast call for the whole range, not one per day
+    mock_current.assert_not_awaited()
+
+    # The same place (within about 1 km) and dates again: every day comes from the cache.
+    mock_geo.return_value = {**MOCK_GEO_REYKJAVIK, "latitude": 64.1500, "longitude": -21.9400}
+    second = await client.post("/api/v1/weather/queries", json=payload)
+    assert second.status_code == 201, second.text
+    assert len(second.json()["weather_records"]) == 3
+    assert second.json()["location"]["id"] == first.json()["location"]["id"]
+    assert mock_forecast.await_count == 1
+
+
+@pytest.mark.asyncio
+@patch("app.routers.weather.geocoding_service.resolve_location", new_callable=AsyncMock)
+@patch("app.routers.weather.weather_service.get_current_weather", new_callable=AsyncMock)
+@patch("app.routers.weather.weather_service.get_forecast", new_callable=AsyncMock)
+async def test_a_place_just_outside_the_radius_is_not_reused(mock_forecast, mock_current, mock_geo, client):
+    day = date.today()
+    mock_forecast.return_value = _forecast_for([day])
+    mock_current.return_value = MOCK_CURRENT_RAW
+    payload = {"location": "x", "date_from": str(day), "date_to": str(day)}
+
+    mock_geo.return_value = {**MOCK_GEO_REYKJAVIK, "latitude": 50.0, "longitude": 10.0, "place_id": "1"}
+    first = await client.post("/api/v1/weather/queries", json=payload)
+    mock_geo.return_value = {**MOCK_GEO_REYKJAVIK, "latitude": 50.011, "longitude": 10.0, "place_id": "2"}
+    second = await client.post("/api/v1/weather/queries", json=payload)
+
+    assert first.status_code == second.status_code == 201
+    assert second.json()["location"]["id"] != first.json()["location"]["id"]
+    assert mock_forecast.await_count == 2  # different place, so no cache hit

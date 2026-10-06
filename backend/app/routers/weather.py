@@ -52,6 +52,20 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/weather", tags=["Weather"])
 
+# Coordinates within this many degrees (about 1 km) are treated as the same place.
+SAME_PLACE_DEG = 0.01
+
+
+def _near(lat_col, lon_col, lat: float, lon: float):
+    """
+    Conditions for "within SAME_PLACE_DEG of (lat, lon)".
+
+    Written as plain range checks on the columns so a (latitude, longitude) index can be
+    used; ``abs(column - x) < d`` wraps the column in a function and forces a full scan.
+    """
+    d = SAME_PLACE_DEG
+    return (lat_col > lat - d, lat_col < lat + d, lon_col > lon - d, lon_col < lon + d)
+
 
 # ────────────────────────────────────────────────────────────────────────────
 # Helper: get-or-create location
@@ -70,8 +84,7 @@ async def _resolve_or_create_location(
     # Re-use existing location if lat/lon match within ~1km tolerance
     result = await db.execute(
         select(Location).where(
-            func.abs(Location.latitude - geo_data["latitude"]) < 0.01,
-            func.abs(Location.longitude - geo_data["longitude"]) < 0.01,
+            *_near(Location.latitude, Location.longitude, geo_data["latitude"], geo_data["longitude"])
         )
     )
     existing = result.scalars().first()
@@ -99,7 +112,8 @@ async def _fetch_weather_for_range(
 
     Caching:  Checks if a weather record already exists in the DB for the same
     location and date (from any previous query within cache TTL).  If found, the
-    cached record is cloned instead of making a new API call.
+    cached record is cloned instead of making a new API call.  The cache is read with
+    one query for the whole range, and the forecast is fetched at most once per range.
 
     Rate-limit: Catches 429 errors gracefully and logs them.
     """
@@ -108,23 +122,29 @@ async def _fetch_weather_for_range(
     error_dates: List[str] = []
     cache_cutoff = datetime.now(timezone.utc) - timedelta(minutes=settings.WEATHER_CACHE_TTL_MINUTES)
 
+    # ── Cached records for every date in the range, newest first ──────────
+    cached_result = await db.execute(
+        select(WeatherRecord)
+        .join(WeatherQuery, WeatherRecord.query_id == WeatherQuery.id)
+        .join(Location, WeatherQuery.location_id == Location.id)
+        .where(
+            *_near(Location.latitude, Location.longitude, location.latitude, location.longitude),
+            WeatherRecord.record_date >= query.date_from,
+            WeatherRecord.record_date <= query.date_to,
+            WeatherRecord.created_at >= cache_cutoff,
+        )
+        .order_by(WeatherRecord.created_at.desc())
+    )
+    cache_by_date = {}
+    for rec in cached_result.scalars():
+        cache_by_date.setdefault(rec.record_date, rec)
+
+    forecast = None  # fetched once, on the first date that needs it
+
     current_date = query.date_from
     while current_date <= query.date_to:
         try:
-            # ── Check DB cache for this location + date ───────────────────
-            existing_result = await db.execute(
-                select(WeatherRecord)
-                .join(WeatherQuery, WeatherRecord.query_id == WeatherQuery.id)
-                .join(Location, WeatherQuery.location_id == Location.id)
-                .where(
-                    func.abs(Location.latitude - location.latitude) < 0.01,
-                    func.abs(Location.longitude - location.longitude) < 0.01,
-                    WeatherRecord.record_date == current_date,
-                    WeatherRecord.created_at >= cache_cutoff,
-                )
-                .order_by(WeatherRecord.created_at.desc())
-            )
-            cached_record = existing_result.scalars().first()
+            cached_record = cache_by_date.get(current_date)
 
             if cached_record:
                 logger.info(
@@ -165,7 +185,8 @@ async def _fetch_weather_for_range(
 
             if -5 <= delta_days <= 7:
                 # Use One Call 3.0 forecast (covers ±5 days roughly)
-                forecast = await weather_service.get_forecast(location.latitude, location.longitude)
+                if forecast is None:
+                    forecast = await weather_service.get_forecast(location.latitude, location.longitude)
                 daily = forecast.get("daily", [])
                 matched = next(
                     (
@@ -280,8 +301,8 @@ async def simple_weather_lookup(
     )
     cache_result = await db.execute(
         select(CurrentWeatherCache).where(
-            func.abs(CurrentWeatherCache.latitude - location.latitude) < 0.01,
-            func.abs(CurrentWeatherCache.longitude - location.longitude) < 0.01,
+            *_near(CurrentWeatherCache.latitude, CurrentWeatherCache.longitude,
+                   location.latitude, location.longitude),
             CurrentWeatherCache.cached_at >= cache_cutoff,
         ).order_by(CurrentWeatherCache.cached_at.desc())
     )
@@ -395,8 +416,8 @@ async def get_current_weather(
     cache_cutoff = datetime.now(timezone.utc) - timedelta(minutes=settings.WEATHER_CACHE_TTL_MINUTES)
     cache_result = await db.execute(
         select(CurrentWeatherCache).where(
-            func.abs(CurrentWeatherCache.latitude - location.latitude) < 0.01,
-            func.abs(CurrentWeatherCache.longitude - location.longitude) < 0.01,
+            *_near(CurrentWeatherCache.latitude, CurrentWeatherCache.longitude,
+                   location.latitude, location.longitude),
             CurrentWeatherCache.cached_at >= cache_cutoff,
         ).order_by(CurrentWeatherCache.cached_at.desc())
     )
