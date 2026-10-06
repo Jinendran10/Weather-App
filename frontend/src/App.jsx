@@ -1,11 +1,13 @@
-import React from 'react'
+import React, { Suspense, lazy } from 'react'
 import { BrowserRouter, Routes, Route, NavLink, Link } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { CloudSun, Database, Github, LayoutDashboard } from 'lucide-react'
 import Home from './pages/Home'
-import History from './pages/History'
-import QueryDetail from './pages/QueryDetail'
 import './index.css'
+
+// Loaded on first visit: QueryDetail pulls in Recharts, which the landing page never needs.
+const History = lazy(() => import('./pages/History'))
+const QueryDetail = lazy(() => import('./pages/QueryDetail'))
 
 function Navbar() {
   const linkCls = ({ isActive }) =>
@@ -66,11 +68,13 @@ export default function App() {
       />
       <Navbar />
       <main className="max-w-6xl mx-auto px-4 py-8">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/history" element={<History />} />
-          <Route path="/query/:id" element={<QueryDetail />} />
-        </Routes>
+        <Suspense fallback={<p className="text-center text-slate-400 py-16">Loading…</p>}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/history" element={<History />} />
+            <Route path="/query/:id" element={<QueryDetail />} />
+          </Routes>
+        </Suspense>
       </main>
       <footer className="border-t border-slate-200 mt-16 py-6 text-center text-slate-400 text-sm">
         WeatherVault © {new Date().getFullYear()} — Built with FastAPI, PostgreSQL & React
