@@ -377,6 +377,23 @@ npm run dev
 - API: `http://localhost:8000/api/v1/docs`
 - App: `http://localhost:3000`
 
+### Database Migrations
+
+The app still creates any missing tables on startup (`create_all`), which is enough for a new database. Schema changes to an existing database go through Alembic. Alembic reads `DATABASE_URL` from the same settings as the app (`.env`), so run it from `backend/`:
+
+```bash
+alembic upgrade head                           # create or update the schema
+alembic revision --autogenerate -m "message"   # after changing app/models
+alembic check                                  # fails if models and migrations disagree
+```
+
+A database the app created before migrations existed already has the initial tables. Mark it once, then upgrade:
+
+```bash
+alembic stamp 0001_initial_schema
+alembic upgrade head
+```
+
 ---
 
 ## Docker Deployment
@@ -461,6 +478,7 @@ Weather-App/
 │   ├── requirements.txt
 │   ├── pytest.ini
 │   ├── alembic.ini
+│   ├── alembic/                  # env.py + versions/ (schema migrations)
 │   └── Dockerfile
 │
 ├── frontend/
@@ -495,12 +513,12 @@ Weather-App/
 | Concern | Current | Production Path |
 |---|---|---|
 | **Connection pooling** | `pool_size=10` | PgBouncer / RDS Proxy |
-| **Weather caching** | Fresh on each query | Redis TTL cache by `(lat, lon, date)` |
+| **Weather caching** | PostgreSQL records reused by place and date within a TTL | Redis TTL cache by `(lat, lon, date)` |
 | **Rate limiting** | OWM plan limits | `slowapi` middleware per key |
 | **Background tasks** | Sync in request | Celery + Redis for long fetches |
 | **Location dedup** | 0.01 degree proximity | PostGIS `ST_DWithin` |
 | **Auth** | Not required (per spec) | JWT + PostgreSQL row-level security |
-| **Migrations** | `create_all` on startup | Alembic scripts for zero-downtime |
+| **Migrations** | Alembic (`backend/alembic/`); `create_all` still creates missing tables on startup | Run `alembic upgrade head` in the deploy step and drop `create_all` |
 | **Observability** | Uvicorn logs | OpenTelemetry + Prometheus + Grafana |
 | **Scaling** | Single process | Multiple Uvicorn workers behind nginx |
 
