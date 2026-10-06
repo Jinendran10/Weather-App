@@ -5,7 +5,7 @@ import ExportButtons from '../components/ExportButtons'
 import { weatherApi } from '../services/api'
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
-import { Database, Plus, X } from 'lucide-react'
+import { AlertTriangle, Database, Plus, X } from 'lucide-react'
 
 /**
  * History page – full CRUD interface.
@@ -14,6 +14,7 @@ import { Database, Plus, X } from 'lucide-react'
 export default function History() {
   const [queries, setQueries] = useState([])
   const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [search, setSearch] = useState('')
@@ -27,6 +28,11 @@ export default function History() {
         location_search: search || undefined,
       })
       setQueries(data)
+      setLoadError(null)
+    } catch (err) {
+      // Without this the rejection went unhandled and the page showed an empty list,
+      // which looks like "no saved queries" rather than "the API is down".
+      setLoadError(err.response?.data?.detail || err.message || 'Could not load saved queries.')
     } finally {
       setLoading(false)
     }
@@ -99,6 +105,13 @@ export default function History() {
           {[...Array(3)].map((_, i) => (
             <div key={i} className="card h-20 animate-pulse bg-slate-100" />
           ))}
+        </div>
+      ) : loadError ? (
+        <div className="card p-8 flex flex-col items-center gap-4 text-center border-red-200 bg-red-50">
+          <AlertTriangle className="w-10 h-10 text-red-500 opacity-70" />
+          <p className="text-red-700 font-semibold">Could not load saved queries</p>
+          <p className="text-red-600 text-sm">{loadError}</p>
+          <button className="btn-secondary" onClick={loadQueries}>Try again</button>
         </div>
       ) : (
         <WeatherHistory
